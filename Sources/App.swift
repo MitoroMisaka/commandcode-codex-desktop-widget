@@ -133,12 +133,37 @@ class WidgetWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
     
-    /// Any mouse click makes this window key so buttons and menus work.
+    /// Any mouse click makes this borderless desktop-level window active/key again.
     override func sendEvent(_ event: NSEvent) {
         if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
-            if !isKeyWindow { makeKey() }
+            if !isKeyWindow { makeKeyAndOrderFront(nil) }
+            NSApplication.shared.activate(ignoringOtherApps: true)
         }
         super.sendEvent(event)
+    }
+}
+
+/// NSHostingView normally does not accept the first click after the app/window is inactive.
+/// For a desktop widget, that makes the refresh button and context menu feel "stuck".
+final class WidgetHostingView<Content: View>: NSHostingView<Content> {
+    var widgetMenu: NSMenu?
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        super.mouseDown(with: event)
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        window?.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        if let menu = widgetMenu {
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+        } else {
+            super.rightMouseDown(with: event)
+        }
     }
 }
 
@@ -303,7 +328,7 @@ enum AppLauncher { static func main() { WidgetAppDelegate.run() } }
 class WidgetAppDelegate: NSObject, NSApplicationDelegate {
     let fetcher = DataFetcher()
     let state = WidgetState()
-    weak var ww: NSWindow?
+    var ww: NSWindow?
     
     static func run() {
         let app = NSApplication.shared; app.setActivationPolicy(.accessory)
@@ -323,12 +348,10 @@ class WidgetAppDelegate: NSObject, NSApplicationDelegate {
         win.minSize = sz; win.maxSize = sz; ww = win
         
         let view = ContentView().environmentObject(fetcher).environmentObject(state)
-        let host = NSHostingView(rootView: view); host.frame.size = sz
+        let host = WidgetHostingView(rootView: view); host.frame.size = sz
         host.autoresizingMask = [.width, .height]; win.contentView = host
         host.wantsLayer = true; host.layer?.cornerRadius = 22; host.layer?.masksToBounds = true
 
-        // Right-click menu via local event monitor.
-        // NSView.menu does not reliably fire on NSHostingView at desktop-icon window level.
         let menu = NSMenu()
         let refreshItem = NSMenuItem(title: "Refresh", action: #selector(menuRefresh), keyEquivalent: "")
         refreshItem.target = self
@@ -338,11 +361,8 @@ class WidgetAppDelegate: NSObject, NSApplicationDelegate {
         quitItem.keyEquivalentModifierMask = []
         quitItem.target = self
         menu.addItem(quitItem)
-        _ = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
-            guard let self, let w = self.ww, event.window === w else { return event }
-            menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
-            return nil
-        }
+        host.widgetMenu = menu
+        host.menu = menu  // fallback for AppKit's native contextual-menu path
 
         if let scr = NSScreen.main {
             let sf = scr.visibleFrame
