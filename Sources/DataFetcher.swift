@@ -23,7 +23,7 @@ class DataFetcher: ObservableObject {
     
     func start() {
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 30*60, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 2*60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
         var pending: Task<Void, Never>?
