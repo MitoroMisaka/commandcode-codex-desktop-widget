@@ -134,10 +134,12 @@ class WidgetWindow: NSWindow {
     override var canBecomeMain: Bool { true }
     
     /// Any mouse click makes this borderless desktop-level window active/key again.
+    /// NOTE: no activate(ignoringOtherApps:) — it can block the event loop on .accessory apps.
     override func sendEvent(_ event: NSEvent) {
         if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
-            if !isKeyWindow { makeKeyAndOrderFront(nil) }
-            NSApplication.shared.activate(ignoringOtherApps: true)
+            let wasKey = isKeyWindow
+            if !wasKey { makeKeyAndOrderFront(nil) }
+            NSLog("[DBG] WidgetWindow.sendEvent type=\(event.type.rawValue) wasKey=\(wasKey)")
         }
         super.sendEvent(event)
     }
@@ -151,19 +153,15 @@ final class WidgetHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func mouseDown(with event: NSEvent) {
+        NSLog("[DBG] WidgetHostingView.mouseDown")
         window?.makeKeyAndOrderFront(nil)
-        NSApplication.shared.activate(ignoringOtherApps: true)
         super.mouseDown(with: event)
     }
 
     override func rightMouseDown(with event: NSEvent) {
+        NSLog("[DBG] WidgetHostingView.rightMouseDown hasMenu=\(widgetMenu != nil)")
         window?.makeKeyAndOrderFront(nil)
-        NSApplication.shared.activate(ignoringOtherApps: true)
-        if let menu = widgetMenu {
-            NSMenu.popUpContextMenu(menu, with: event, for: self)
-        } else {
-            super.rightMouseDown(with: event)
-        }
+        super.rightMouseDown(with: event)  // let AppKit handle menu via host.menu
     }
 }
 
@@ -344,7 +342,7 @@ class WidgetAppDelegate: NSObject, NSApplicationDelegate {
         win.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)))
         win.isOpaque = false; win.backgroundColor = .clear; win.hasShadow = false
         win.isMovableByWindowBackground = true; win.isMovable = true
-        win.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        win.collectionBehavior = [.canJoinAllSpaces]
         win.minSize = sz; win.maxSize = sz; ww = win
         
         let view = ContentView().environmentObject(fetcher).environmentObject(state)

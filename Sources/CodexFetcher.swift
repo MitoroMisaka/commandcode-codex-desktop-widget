@@ -132,7 +132,10 @@ enum CodexFetcher {
                 state.cancelTimeout()
                 if process.isRunning {
                     process.terminate()
+                    process.waitUntilExit()  // reap zombie
+                    NSLog("[DBG] CodexFetcher terminated pid=\(process.processIdentifier)")
                 }
+                NSLog("[DBG] CodexFetcher finish hasPlan=\(status.planName != nil) err=\(status.error ?? "nil")")
                 continuation.resume(returning: status)
             }
 
