@@ -161,7 +161,11 @@ final class WidgetHostingView<Content: View>: NSHostingView<Content> {
     override func rightMouseDown(with event: NSEvent) {
         dbg("[DBG] WidgetHostingView.rightMouseDown hasMenu=\(widgetMenu != nil)")
         window?.makeKeyAndOrderFront(nil)
-        super.rightMouseDown(with: event)  // let AppKit handle menu via host.menu
+        if let menu = widgetMenu {
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+        } else {
+            super.rightMouseDown(with: event)
+        }
     }
 }
 
