@@ -139,7 +139,7 @@ class WidgetWindow: NSWindow {
         if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
             let wasKey = isKeyWindow
             if !wasKey { makeKeyAndOrderFront(nil) }
-            NSLog("[DBG] WidgetWindow.sendEvent type=\(event.type.rawValue) wasKey=\(wasKey)")
+            dbg("[DBG] WidgetWindow.sendEvent type=\(event.type.rawValue) wasKey=\(wasKey)")
         }
         super.sendEvent(event)
     }
@@ -153,13 +153,13 @@ final class WidgetHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func mouseDown(with event: NSEvent) {
-        NSLog("[DBG] WidgetHostingView.mouseDown")
+        dbg("[DBG] WidgetHostingView.mouseDown")
         window?.makeKeyAndOrderFront(nil)
         super.mouseDown(with: event)
     }
 
     override func rightMouseDown(with event: NSEvent) {
-        NSLog("[DBG] WidgetHostingView.rightMouseDown hasMenu=\(widgetMenu != nil)")
+        dbg("[DBG] WidgetHostingView.rightMouseDown hasMenu=\(widgetMenu != nil)")
         window?.makeKeyAndOrderFront(nil)
         super.rightMouseDown(with: event)  // let AppKit handle menu via host.menu
     }

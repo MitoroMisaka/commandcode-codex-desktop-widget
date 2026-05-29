@@ -26,7 +26,7 @@ class DataFetcher: ObservableObject {
     func start() {
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 2*60, repeats: true) { [weak self] _ in
-            NSLog("[DBG] Timer fired, calling refresh()")
+            dbg("[DBG] Timer fired, calling refresh()")
             Task { @MainActor in self?.refresh() }
         }
         var pending: Task<Void, Never>?
@@ -34,31 +34,31 @@ class DataFetcher: ObservableObject {
             pending?.cancel()
             pending = Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 500_000_000)
-                NSLog("[DBG] didBecomeActive + 0.5s debounce, calling refresh()")
+                dbg("[DBG] didBecomeActive + 0.5s debounce, calling refresh()")
                 self?.refresh()
             }
         }
     }
     func stop() { timer?.invalidate() }
     func refresh() {
-        NSLog("[DBG] DataFetcher.refresh() called loading=\(loading)")
+        dbg("[DBG] DataFetcher.refresh() called loading=\(loading)")
         fetchTask?.cancel()
         fetchTask = Task { [weak self] in
             guard let self else { return }
             do { try await self._fetch() }
-            catch { NSLog("[DBG] fetch() threw: \(error)") }
+            catch { dbg("[DBG] fetch() threw: \(error)") }
         }
     }
     
     /// Actual fetch work — structured so defer always runs.
     private func _fetch() async throws {
         guard !loading || loadingDeadline.map({ Date().timeIntervalSince($0) > 35 }) ?? true else {
-            NSLog("[DBG] _fetch() blocked — loading still true, deadline not expired")
+            dbg("[DBG] _fetch() blocked — loading still true, deadline not expired")
             return
         }
-        NSLog("[DBG] _fetch() enter")
+        dbg("[DBG] _fetch() enter")
         loading = true; error = nil; loadingDeadline = Date()
-        defer { loading = false; loadingDeadline = nil; NSLog("[DBG] _fetch() exiting, set loading=false") }
+        defer { loading = false; loadingDeadline = nil; dbg("[DBG] _fetch() exiting, set loading=false") }
         
         // Start Codex fetch in parallel (decoupled from CC data).
         // Cancel any in-flight Codex fetch and use [weak self] to match project pattern.

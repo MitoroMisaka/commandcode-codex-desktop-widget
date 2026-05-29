@@ -15,6 +15,7 @@ swiftc -sdk "$SDK" \
   -framework SwiftUI -framework AppKit -framework Combine -framework Foundation \
   -O \
   -o "$BIN" \
+  Sources/Diag.swift \
   Sources/Models.swift \
   Sources/TokenExtractor.swift \
   Sources/DataFetcher.swift \
