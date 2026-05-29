@@ -11,45 +11,46 @@
 
 ---
 
-## Phase 0: 部署已有修复
+## Phase 0: 部署已有修复 ✅
 
 **目标**: 用包含全部修复的新二进制替换旧进程。
 
-- [ ] 退出旧 widget 进程 (PID 48746)
+- [x] 退出旧 widget 进程 (PID 48746) → killed, new PID 18287
   - 方法: 活动监视器 → CommandCodeCodexWidget → 强制退出
   - 或终端: `kill 48746`
-- [ ] 启动新版本: `open ~/Projects/CommandCodeCodexWidget/.build/CommandCodeCodex.app`
-- [ ] 确认 PID 不再是 48746，且 `ps -o lstart` 显示当前时间
-- [ ] 开启 log stream 观察:
-  ```bash
-  log stream --predicate 'process == "CommandCodeCodexWidget"' --level debug
-  ```
-- [ ] 确认右键菜单正常弹出（日志显示 `WidgetHostingView.rightMouseDown`）
-- [ ] 确认刷新按钮正常（日志显示 `DataFetcher.refresh()` → `_fetch() enter` → `_fetch() exiting`）
-- [ ] commit: 验证 Phase 0 完成
+- [x] 启动新版本: PID 18287 启动于 2026-05-29 16:32
+- [x] 确认 PID 不再是 48746 ✅
+- [x] 日志可见 (文件日志 `~/.hermes/logs/widget.log`, macOS 26 隐私策略下 NSLog/os_log 不可见)
+- [x] 右键菜单正常弹出（日志显示 `WidgetHostingView.rightMouseDown`）✅
+- [x] 刷新按钮正常（日志显示 `DataFetcher.refresh()` → `_fetch() enter` → `_fetch() exiting`）✅
+- [x] commit: 54d94bb
 
 ---
 
-## Phase 1: 24 小时耐久观察
+## Phase 1: 24 小时耐久观察 (进行中)
 
 **目标**: 连续运行 24 小时不卡死。
 
-### 1a: 基线验证（启动后 30 分钟内）
+### 1a: 基线验证（启动后 30 分钟内）✅
 
-- [ ] 右键菜单可正常弹出
-- [ ] 刷新按钮可正常点击
-- [ ] 数据正常更新（Cost / Tokens / Runs 数值变化）
-- [ ] Codex 行正常显示（5h/7d 百分比）
-- [ ] log 无 "blocked — loading still true" 反复出现
+- [x] 右键菜单可正常弹出
+- [x] 刷新按钮可正常点击
+- [x] 数据正常更新
+- [x] Codex 行正常显示（hasPlan=true）
+- [x] log 中 "blocked — loading still true" 仅出现在 didBecomeActive 防抖场景（预期行为）
 
-### 1b: 长时间观察（1-24 小时）
+### 1b: 长时间观察（1-24 小时）— 进行中
+ 
+已设置 cron 监控 `widget-health-check` (每 10 分钟, job_id: f4e41e7903b0)。
+widget 正常时静默，卡死或进程死亡时通知。
 
-- [ ] 每隔几小时手动检查一次：右键、刷新、数据是否更新
-- [ ] 如果卡住，立即记录:
+- [ ] **24 小时后确认**: widget 仍在运行、无卡死、无僵尸进程
+  - 检查方式: `cat ~/.hermes/logs/widget.log | tail -20` + `pgrep -P <PID>`
+- [ ] 如果卡住:
   - `pgrep -f CommandCodeCodexWidget` → 记录 PID
   - `pgrep -P <PID>` → 检查子进程泄漏
   - `ps -o pid,stat,etime,command -P <PID>` → 检查 Codex 子进程状态
-  - `log show --predicate 'process == "CommandCodeCodexWidget"' --last 5m | grep DBG` → 最后几条日志
+  - `cat ~/.hermes/logs/widget.log | tail -20` → 最后几条日志
 
 ### 1c: 如果 Phase 1 还卡住
 
