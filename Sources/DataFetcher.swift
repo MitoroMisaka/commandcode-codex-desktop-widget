@@ -23,11 +23,30 @@ class DataFetcher: ObservableObject {
         return URLSession(configuration: c)
     }()
     
+    /// Periodically re-activate the desktop-icon-level window so AppKit doesn't
+    /// stop routing mouse events after prolonged inactivity. Called on every
+    /// timer tick — the 2-minute interval is frequent enough to keep the window
+    /// alive without fighting normal desktop usage.
+    private func keepAlive() {
+        NSApplication.shared.windows.forEach { w in
+            if w.level == NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow))) {
+                // orderOut + makeKeyAndOrderFront forces WindowServer to re-register
+                // event routing without visual flicker (sub-ms, same runloop turn).
+                w.orderOut(nil)
+                w.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+    
     func start() {
+        keepAlive()
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 2*60, repeats: true) { [weak self] _ in
-            dbg("[DBG] Timer fired, calling refresh()")
-            Task { @MainActor in self?.refresh() }
+            Task { @MainActor in
+                self?.keepAlive()
+                dbg("[DBG] Timer fired, calling refresh()")
+                self?.refresh()
+            }
         }
         var pending: Task<Void, Never>?
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
