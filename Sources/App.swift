@@ -324,6 +324,10 @@ enum AppLauncher { static func main() { WidgetAppDelegate.run() } }
 
 @MainActor
 class WidgetAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        return .terminateNow
+    }
+    
     let fetcher = DataFetcher()
     let state = WidgetState()
     var ww: NSWindow?
@@ -396,5 +400,9 @@ class WidgetAppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func menuRefresh() { fetcher.refresh() }
-    @objc func menuQuit() { NSApplication.shared.terminate(nil) }
+    @objc func menuQuit() {
+        fetcher.stop()                 // kill Timer so it doesn't fire during termination
+        NSApplication.shared.reply(toApplicationShouldTerminate: true)
+        NSRunningApplication.current.terminate()
+    }
 }
